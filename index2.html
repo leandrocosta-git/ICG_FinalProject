@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+	<title>Reef Relics</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link rel="stylesheet" href="/stylee.css">
+</head>
+
+<body>
+	<div id="world"></div>
+	<div id="centerText">Fim do Jogo</div>
+	<div id="centerText">Clica para começar</div>
+	<div id="dist">
+	  <div id="distValue">000</div>
+	  <div class="record">Record: </div>
+	</div>
+	<div id="instructions">Clica para saltar<span class="lightInstructions"> — Evita os obstáculos!</span></div>
+	<div id="WebGL-output"></div>
+	<script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+
+	<script type="importmap">
+		{
+    		"imports": {
+     			 "three": "https://threejs.org/build/three.module.js"
+    		}
+  		}
+	</script>
+
+	  </script>
+
+	</script>
+
+	<script type="module">
+  
+	  import * as THREE from "https://cdn.skypack.dev/three@0.129.0/build/three.module.js";
+	  import { GLTFLoader } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js";
+  
+	  let scene, camera, renderer, models = [];
+	  var floorRadius = 100;
+	  var floorShadow, floorGrass, floor;
+	  var cameraPosGame = 160;
+	  var cameraPosGameOver = 260;
+	  var fieldOfView, aspectRatio, nearPlane, farPlane,
+		gobalLight, shadowLight, backLight,
+		container,
+		controls,
+		clock;
+  
+	  function createFloor() {
+		floorShadow = new THREE.Mesh(new THREE.SphereGeometry(floorRadius, 50, 50), new THREE.MeshPhongMaterial({
+		  color: 0x917a5,
+		  specular: 0x000000,
+		  shininess: 1,
+		  transparent: true,
+		  opacity: .5
+		}));
+		floorShadow.receiveShadow = true;
+  
+		floorGrass = new THREE.Mesh(new THREE.SphereGeometry(floorRadius - .5, 50, 50), new THREE.MeshBasicMaterial({
+		  color: 0xd2b48c,
+		}));
+		floorGrass.receiveShadow = true;
+  
+		floor = new THREE.Group();
+		floor.position.y = -floorRadius;
+  
+		floor.add(floorShadow);
+		floor.add(floorGrass);
+		scene.add(floor);
+	  }
+  
+	  function init() {
+		// The SCENE
+		scene = new THREE.Scene();
+		createFloor();
+  
+		// The CAMERA
+		var HEIGHT, WIDTH, windowHalfX, windowHalfY,
+		mousePos = { x: 0, y: 0 };
+		HEIGHT = window.innerHeight;
+		WIDTH = window.innerWidth;
+		windowHalfX = WIDTH / 2;
+		windowHalfY = HEIGHT / 2;
+		aspectRatio = WIDTH / HEIGHT;
+		fieldOfView = 30;
+		nearPlane = 2;
+		farPlane = 2000;
+		camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
+		camera.position.set(100, 20, 0);  // Set the camera to the side and slightly above
+		camera.lookAt(new THREE.Vector3(0, 10, 0));  // Adjust the lookAt vector to focus on the center
+		scene.add(camera);
+  
+		// The RENDERER
+		renderer = new THREE.WebGLRenderer({ antialias: false });
+		renderer.setClearColor(new THREE.Color(0x1b1e33));
+		renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMap.enabled = true;
+		document.getElementById("WebGL-output").appendChild(renderer.domElement);
+  
+		// LIGHTS
+		const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+		scene.add(ambientLight);
+  
+		const lanternfishPosition = new THREE.Vector3(10, 0, 0);
+		const spotLight = new THREE.SpotLight(0x00ffff, 0.8);
+		spotLight.castShadow = true;
+		spotLight.position.copy(lanternfishPosition);
+		scene.add(spotLight);
+  
+		// Load Models
+		addModel('assets/yellow_submarine/scene.gltf', 0.05, 0, 10, 0, Math.PI, scene);
+		addModel('assets/lanternfish_lamp/scene.gltf', 10, 0, 0, 20, Math.PI, scene);
+  
+		// Render the scene
+		renderer.render(scene, camera);
+  
+		// Update model features and render the scene 
+		function renderScene() {
+		  requestAnimationFrame(renderScene);
+		  renderer.render(scene, camera);
+		}
+  
+		renderScene();
+  
+		// Handle window resize
+		window.addEventListener('resize', onResize, false);
+	  }
+  
+	  function addModel(path, scaleFactor, positionX, positionY, positionZ, rotation, scene) {
+		const loader = new GLTFLoader();
+		loader.load(path, function (gltf) {
+		  const model = gltf.scene;
+  
+		  // Set the model's position and scale here
+		  model.position.set(positionX, positionY, positionZ);
+		  model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+		  model.rotation.y = rotation; // Adjust this value to rotate the model
+  
+		  scene.add(model);
+		  models.push(model);
+		  model.traverse(function (node) {
+			if (node.isMesh) {
+			  node.castShadow = true;
+			}
+		  });
+		}, undefined, function (error) {
+		  console.error(error);
+		});
+	  }
+  
+	  function onResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	  }
+  
+	  window.onload = init;
+  
+	</script>
+
+</body>
+
+</html>
