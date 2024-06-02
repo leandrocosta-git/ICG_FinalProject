@@ -212,26 +212,105 @@ function createFloor() {
 }
 
 Submarine = function () {
+  this.mesh = new THREE.Group(); // Main group for all submarine parts
+
+  // Creating the main body of the submarine
+  var bodyGeom = new THREE.CylinderGeometry(3, 3, 9, 16, 1);
+  var bodyMat = new THREE.MeshPhongMaterial({ color: whiteMat, shading: THREE.FlatShading });
+  var body = new THREE.Mesh(bodyGeom, bodyMat);
+
+  var bodyFront = new THREE.CylinderGeometry(3, 2, 2, 16, 1);
+  bodyFront = new THREE.Mesh(bodyFront, bodyMat);
+  bodyFront.position.set(0, 5.5, 0);
+  bodyFront.rotation.x = Math.PI;
+
+  body.add(bodyFront);
+  body.position.set(0, 10, 0);
+
+  body.rotation.z = Math.PI / 2;
+  body.rotation.y = Math.PI / 2;
+  this.mesh.add(body);
+
+  // Create the Propeller group
+  var propeller = new THREE.Group();
+  // Create the blades
+  var bladeGeom = new THREE.BoxGeometry(1, 2, 4, 1);
+  var bladeMat = new THREE.MeshPhongMaterial({ color: 0x23190f, shading: THREE.FlatShading });
+  var blade1 = new THREE.Mesh(bladeGeom, bladeMat);
+  blade1.position.set(2, 0, 0);
+
+  var blade2 = blade1.clone();
+  blade2.rotation.x = Math.PI / 2;
+
+  propeller.add(blade1);
+  propeller.add(blade2);
+
+  var propellerHolderGeom = new THREE.BoxGeometry(1, 1, 1, 1);
+  var propellerHolder = new THREE.Mesh(propellerHolderGeom, bodyMat);
+  propellerHolder.position.set(3, 0, 0);
+  propeller.add(propellerHolder);
+
+  propeller.rotation.y = Math.PI / 2;
+  propeller.rotation.z = Math.PI / 2;
+  propeller.position.set(0, -8, 0);
+
+  body.add(propeller);
+
+  // Create Conning tower
+  var towerGeom = new THREE.CylinderGeometry(2, 2, 2, 6, 1);
+  towerGeom.applyMatrix(new THREE.Matrix4().makeTranslation(0, 3, 0));
+  var tower = new THREE.Mesh(towerGeom, whiteMat);
+  tower.position.set(0, 10, 0);
+  this.mesh.add(tower);
+
+  // Create the  Periscope
+  var periscopeGeom = new THREE.CylinderGeometry(0.5, 0.5, 5, 6, 1);
+  periscopeGeom.applyMatrix(new THREE.Matrix4().makeTranslation(0, 4, 0));
+  var periscope = new THREE.Mesh(periscopeGeom, whiteMat);
+  periscope.position.set(0, 10, 0);
+
+  var periscope2Geom = new THREE.CylinderGeometry(0.5, 0.5, 2, 6, 1);
+  periscope2Geom.applyMatrix(new THREE.Matrix4().makeTranslation(0, -1, 0));
+  var periscope2 = new THREE.Mesh(periscope2Geom, whiteMat);
+  periscope2.position.set(0, 16.1, 0);
+  periscope2.rotation.z = Math.PI / 2;
+  periscope2.rotation.y = Math.PI / 2;
+
+  this.mesh.add(periscope2);
+  this.mesh.add(periscope);
+
+  this.mesh.scale.set(2, 2, 2);
+};
+
+Submarine.prototype.run = function () {
   this.status = "running";
-  this.runningCycle = 0;
-  this.mesh = new THREE.Group();
-  this.body = new THREE.Group();
-  this.mesh.add(this.body);
 
-  var torsoGeom = new THREE.CubeGeometry(7, 7, 10, 1);
+  var s = Math.min(speed, maxSpeed);
 
-  this.torso = new THREE.Mesh(torsoGeom, brownMat);
-  this.torso.position.z = 0;
-  this.torso.position.y = 7;
-  this.torso.castShadow = true;
-  this.body.add(this.torso);
+  this.runningCycle += delta * s * .7;
+  this.runningCycle = this.runningCycle % (Math.PI * 2);
+  var t = this.runningCycle;
 
-  this.torso.rotation.x = -Math.PI / 8;
+  var amp = 4;
+  var disp = .2;
 
-  this.body.traverse(function (object) {
-    if (object instanceof THREE.Mesh) {
-      object.castShadow = true;
-      object.receiveShadow = true;
+  // BODY
+  if (this.body) {
+    this.body.position.y = 6 + Math.sin(t - Math.PI / 2) * amp;
+  }
+}
+
+Submarine.prototype.jump = function () {
+  if (this.status == "jumping") return;
+  this.status = "jumping";
+  var _this = this;
+  var totalSpeed = 10 / speed;
+  var jumpHeight = 45;
+  TweenMax.to(this.mesh.position, totalSpeed / 2, { y: jumpHeight, ease: Power2.easeOut });
+  TweenMax.to(this.mesh.position, totalSpeed / 2, {
+    y: 0, ease: Power4.easeIn, delay: totalSpeed / 2, onComplete: function () {
+      //t = 0;
+      _this.status = "running";
     }
   });
 }
@@ -271,43 +350,6 @@ BonusParticles.prototype.explose = function () {
 
 function removeParticle(p) {
   p.visible = false;
-}
-
-Submarine.prototype.run = function () {
-  this.status = "running";
-
-  var s = Math.min(speed, maxSpeed);
-
-  this.runningCycle += delta * s * .7;
-  this.runningCycle = this.runningCycle % (Math.PI * 2);
-  var t = this.runningCycle;
-
-  var amp = 4;
-  var disp = .2;
-
-  // BODY
-  this.body.position.y = 6 + Math.sin(t - Math.PI / 2) * amp;
-  this.body.rotation.x = .2 + Math.sin(t - Math.PI / 2) * amp * .1;
-
-  this.torso.rotation.x = Math.sin(t - Math.PI / 2) * amp * .1;
-  this.torso.position.y = 7 + Math.sin(t - Math.PI / 2) * amp * .5;
-}
-
-
-Submarine.prototype.jump = function () {
-  if (this.status == "jumping") return;
-  this.status = "jumping";
-  var _this = this;
-  var totalSpeed = 10 / speed;
-  var jumpHeight = 45;
-  TweenMax.to(this.mesh.position, totalSpeed / 2, { y: jumpHeight, ease: Power2.easeOut });
-  TweenMax.to(this.mesh.position, totalSpeed / 2, {
-    y: 0, ease: Power4.easeIn, delay: totalSpeed / 2, onComplete: function () {
-      //t = 0;
-      _this.status = "running";
-    }
-  });
-
 }
 
 LanternFish = function () {
@@ -482,22 +524,35 @@ LightningBolt = function () {
       object.receiveShadow = true;
     }
   });
+
+  this.mesh.scale.set(0.6, 0.6, 0.6);
 }
 
 Coral = function () {
   this.angle = 0;
   this.status = "ready";
   this.mesh = new THREE.Group();
-  var bodyGeom = new THREE.CubeGeometry(6, 6, 6, 1);
-  this.body = new THREE.Mesh(bodyGeom, blackMat);
 
-  var headGeom = new THREE.CubeGeometry(5, 5, 7, 1);
-  this.head = new THREE.Mesh(headGeom, lightBrownMat);
-  this.head.rotation.y = -Math.PI / 2;
-  this.head.position.z = 6;
+  //creating the body of the coral
+  var bodyGeom = new THREE.CylinderGeometry(0, 0);
+  var body = new THREE.Mesh(bodyGeom, blackMat);
+  body.position.y = -1;
+  this.body = body;
+  this.mesh.add(body);
 
-
-  this.mesh.add(this.body);
+  //adding sticks to the coral
+  var stickGeom = new THREE.CylinderGeometry(0.4, 0.4, 8, 6, 1);
+  this.sticks = [];
+  for (var i = 0; i < 20; i++) {
+    var stick = new THREE.Mesh(stickGeom, blackMat);
+    stick.position.x = Math.sin(i * .3) * 4;
+    stick.position.z = Math.cos(i * .3) * 4;
+    stick.position.y = -1 + Math.random() * 4;
+    stick.rotation.x = Math.random() * Math.PI;
+    stick.rotation.y = Math.random() * Math.PI;
+    this.sticks.push(stick);
+    this.mesh.add(stick);
+  }
 
   this.mesh.traverse(function (object) {
     if (object instanceof THREE.Mesh) {
@@ -511,11 +566,6 @@ Coral.prototype.nod = function () {
   var _this = this;
   var speed = .1 + Math.random() * .5;
   var angle = -Math.PI / 4 + Math.random() * Math.PI / 2;
-  TweenMax.to(this.head.rotation, speed, {
-    y: angle, onComplete: function () {
-      _this.nod();
-    }
-  });
 }
 
 function createSubmarine() {
@@ -692,7 +742,7 @@ function updateFloorRotation() {
 function createObstacle() {
   obstacle = new Coral();
   obstacle.body.rotation.y = -Math.PI / 2;
-  obstacle.mesh.scale.set(1.1, 1.1, 1.1);
+  obstacle.mesh.scale.set(1.5, 1.5, 1.5);
   obstacle.mesh.position.y = floorRadius + 4;
   obstacle.nod();
   scene.add(obstacle.mesh);
