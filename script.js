@@ -26,6 +26,8 @@ var lanternFishAcceleration = 0.004;
 var malusClearColor = 0x0e1521;
 var malusClearAlpha = 1;
 
+var fieldRecord = document.getElementById('record');
+
 var fieldGameOver, fieldDistance;
 
 //SCREEN & MOUSE VARIABLES
@@ -38,7 +40,7 @@ var HEIGHT, WIDTH, windowHalfX, windowHalfY,
 
 //3D OBJECTS VARIABLES
 
-var hero;
+var submarine;
 
 
 // Materials
@@ -101,7 +103,7 @@ function initScreenAnd3D() {
 
   scene = new THREE.Scene();
 
-  scene.fog = new THREE.Fog(0x000000, 0.9);
+  scene.fog = new THREE.Fog(0x0E1521, 0.9);
 
   aspectRatio = WIDTH / HEIGHT;
   fieldOfView = 50;
@@ -132,7 +134,15 @@ function initScreenAnd3D() {
   container.appendChild(renderer.domElement);
 
   window.addEventListener('resize', handleWindowResize, false);
-  document.addEventListener('mousedown', handleMouseDown, false);
+  document.addEventListener('keydown', function (event) {
+    if (event.code === 'Space') {
+      if (gameStatus === "gameOver") {
+        replay();
+      } else if (gameStatus === "play") {
+        submarine.jump();
+      }
+    }
+  });
   document.addEventListener("touchend", handleMouseDown, false);
 
   clock = new THREE.Clock();
@@ -148,9 +158,8 @@ function handleWindowResize() {
   camera.updateProjectionMatrix();
 }
 
-
 function handleMouseDown(event) {
-  if (gameStatus == "play") hero.jump();
+  if (gameStatus == "play") Submarine.jump();
   else if (gameStatus == "readyToReplay") {
     replay();
   }
@@ -202,7 +211,7 @@ function createFloor() {
 
 }
 
-Hero = function () {
+Submarine = function () {
   this.status = "running";
   this.runningCycle = 0;
   this.mesh = new THREE.Group();
@@ -264,7 +273,7 @@ function removeParticle(p) {
   p.visible = false;
 }
 
-Hero.prototype.run = function () {
+Submarine.prototype.run = function () {
   this.status = "running";
 
   var s = Math.min(speed, maxSpeed);
@@ -285,7 +294,7 @@ Hero.prototype.run = function () {
 }
 
 
-Hero.prototype.jump = function () {
+Submarine.prototype.jump = function () {
   if (this.status == "jumping") return;
   this.status = "jumping";
   var _this = this;
@@ -331,22 +340,16 @@ LanternFish = function () {
   this.tail.rotation.z = -Math.PI / 8;
   this.body.add(this.tail);
 
-  // The mouth of the lanternfish, smaller box geometry
-  var mouthGeom = new THREE.BoxGeometry(3, 1, 2);
-  mouthGeom.translate(20, -2, 0); // adjust translation as needed
-  this.mouth = new THREE.Mesh(mouthGeom, blackMat);
-  this.head.add(this.mouth);
-
   // Lantern of the lanternfish, a glowing small sphere
   var lanternMaterial = new THREE.MeshPhongMaterial({
     color: 0x00FFFF,
     emissive: 0x00FFFF,
     shading: THREE.FlatShading,
   });
-  var lanternGeom = new THREE.CubeGeometry(3, 3, 3);
+  var lanternGeom = new THREE.SphereGeometry(2);
   this.lantern = new THREE.Mesh(lanternGeom, lanternMaterial);
-  this.lantern.position.z = 25;
-  this.lantern.position.y = 22.5;
+  this.lantern.position.z = 24;
+  this.lantern.position.y = 22;
   this.body.add(this.lantern);
 
   //light to the lantern
@@ -408,7 +411,7 @@ LanternFish.prototype.nod = function () {
   TweenMax.to(this.head.rotation, speed, { y: angle, onComplete: function () { _this.nod(); } });
 }
 
-Hero.prototype.hang = function () {
+Submarine.prototype.hang = function () {
   var _this = this;
   var sp = 1;
   var ease = Power4.easeOut;
@@ -421,7 +424,7 @@ Hero.prototype.hang = function () {
   TweenMax.to(this.mesh.position, sp, { y: -7, z: 6, ease: ease });
 }
 
-Hero.prototype.nod = function () {
+Submarine.prototype.nod = function () {
   var _this = this;
   var speed = .1 + Math.random() * .5;
   var angle = -Math.PI / 4 + Math.random() * Math.PI / 2;
@@ -439,10 +442,18 @@ LanternFish.prototype.sit = function () {
   TweenMax.to(this.head.rotation, sp, { x: Math.PI / 6, ease: ease, onComplete: function () { _this.nod(); } });
 }
 
-updateLanternFishPosition = function () {
+function updateLanternFishPosition() {
   lanternFish.run();
   lanternFishPosTarget -= delta * lanternFishAcceleration;
-  lanternFishPos += (lanternFishPosTarget - lanternFishPos) * delta
+  lanternFishPos += (lanternFishPosTarget - lanternFishPos) * delta;
+  if (lanternFishPos < .5) {
+    gameOver();
+  }
+
+  var angle = Math.PI * lanternFishPos;
+  lanternFish.mesh.position.y = -floorRadius + Math.sin(angle) * (floorRadius + 12);
+  lanternFish.mesh.position.x = Math.cos(angle) * (floorRadius + 15);
+  lanternFish.mesh.rotation.z = -Math.PI / 2 + angle;
 }
 
 
@@ -450,12 +461,22 @@ LightningBolt = function () {
   this.angle = 0;
   this.mesh = new THREE.Group();
 
-  var bodyGeom = new THREE.CylinderGeometry(5, 3, 10, 4, 1);
+  // Define the first cone
+  var coneGeom1 = new THREE.ConeGeometry(5, 10, 4, 2);
+  var cone1 = new THREE.Mesh(coneGeom1, yellowMat);
+  cone1.position.set(3, 5, 0);
+  cone1.rotation.set(0, Math.PI / 4, 0); // Rotate to align with the second cone
 
-  this.body = new THREE.Mesh(bodyGeom, yellowMat);
-  this.mesh.add(this.body);
+  // Define the second cone
+  var coneGeom2 = new THREE.ConeGeometry(5, 10, 4, 2);
+  var cone2 = new THREE.Mesh(coneGeom2, yellowMat);
+  cone2.position.set(0, -5, 0);
+  cone2.rotation.set(Math.PI, Math.PI / 4, 0); // Rotate to align with the first cone
 
-  this.body.traverse(function (object) {
+  this.mesh.add(cone1);
+  this.mesh.add(cone2);
+
+  this.mesh.traverse(function (object) {
     if (object instanceof THREE.Mesh) {
       object.castShadow = true;
       object.receiveShadow = true;
@@ -463,7 +484,7 @@ LightningBolt = function () {
   });
 }
 
-Hedgehog = function () {
+Coral = function () {
   this.angle = 0;
   this.status = "ready";
   this.mesh = new THREE.Group();
@@ -486,7 +507,7 @@ Hedgehog = function () {
   });
 }
 
-Hedgehog.prototype.nod = function () {
+Coral.prototype.nod = function () {
   var _this = this;
   var speed = .1 + Math.random() * .5;
   var angle = -Math.PI / 4 + Math.random() * Math.PI / 2;
@@ -497,11 +518,11 @@ Hedgehog.prototype.nod = function () {
   });
 }
 
-function createHero() {
-  hero = new Hero();
-  hero.mesh.rotation.y = Math.PI / 2;
-  scene.add(hero.mesh);
-  hero.nod();
+function createSubmarine() {
+  submarine = new Submarine();
+  submarine.mesh.rotation.y = Math.PI / 2;
+  scene.add(submarine.mesh);
+  submarine.nod();
 }
 
 function createLanternFish() {
@@ -515,44 +536,47 @@ function startGame() {
   fieldStartGame.className = "show";
   gameStatus = "startGame";
   lanternFish.sit();
-  hero.hang();
-  lanternFish.heroHolder.add(hero.mesh);
+  submarine.hang();
+  lanternFish.submarineHolder.add(submarine.mesh);
   TweenMax.to(this, 1, { speed: 0 });
   TweenMax.to(camera.position, 3, { z: cameraPosStartGame, y: 60, x: -30 });
   lightningBolt.mesh.visible = false;
   obstacle.mesh.visible = false;
   clearInterval(levelInterval);
+  SaveRecord();
 }
 
 function gameOver() {
   fieldGameOver.className = "show";
   gameStatus = "gameOver";
   lantern.sit();
-  hero.hang();
-  lantern.heroHolder.add(hero.mesh);
+  submarine.hang();
+  lantern.submarineHolder.add(submarine.mesh);
   TweenMax.to(this, 1, { speed: 0 });
   TweenMax.to(camera.position, 3, { z: cameraPosGameOver, y: 60, x: -30 });
   lightningBolt.mesh.visible = false;
   obstacle.mesh.visible = false;
   clearInterval(levelInterval);
+  SaveRecord();
 }
 
 function replay() {
+  // Reset game parameters
+  submarine.mesh.position.set(0, 0, 0); // Reset submarine's position
+  submarine.mesh.rotation.set(0, 0, 0); // Reset submarine's rotation
+  submarine.status = "running";
+  distance = 0; // Reset distance traveled
+  speed = initSpeed; // Reset speed to initial speed
+  gameStatus = "play"; // Set game status to 'play'
 
-  gameStatus = "preparingToReplay"
+  fieldGameOver.style.display = "none";
+  fieldDistance.innerHTML = "0";
 
-  fieldGameOver.className = "";
-
-  TweenMax.killTweensOf(lanternFish.head.rotation);
-
-  TweenMax.to(camera.position, 3, { z: cameraPosGame, x: 0, y: 30, ease: Power4.easeInOut });
-
-
-  TweenMax.to(lanternFish.head.rotation, 2, { y: 0, x: -.3, ease: Power4.easeInOut });
-
-  TweenMax.to(hero.mesh.position, 2, { x: 20, ease: Power4.easeInOut });
-  TweenMax.to(lanternFish.mouth.rotation, 2, { x: .2, ease: Power4.easeInOut });
+  resetGameEnvironment();
+  resetGameParameters();
+  requestAnimationFrame(loop);
 }
+
 
 Fir = function () {
   var height = 200;
@@ -565,12 +589,10 @@ Fir = function () {
 var firs = new THREE.Group();
 
 function createFirs() {
-
-  var nTrees = 180;
+  var nTrees = 100; // Número de "árvores"
   for (var i = 0; i < nTrees; i++) {
     var phi = i * (Math.PI * 2) / nTrees;
     var theta = Math.PI / 2;
-    //theta += .25 + Math.random()*.3; 
     theta += (Math.random() > .05) ? .25 + Math.random() * .3 : - .35 - Math.random() * .1;
 
     var fir = new Tree();
@@ -587,33 +609,51 @@ function createFirs() {
 
 Tree = function () {
   this.mesh = new THREE.Object3D();
-  this.trunc = new Trunc();
-  this.mesh.add(this.trunc.mesh);
+  this.trunk = new Trunk();
+  this.mesh.add(this.trunk.mesh);
+
+  // Adicionando folhas ao longo do tronco
+  var nLeaves = 10 + Math.floor(Math.random() * 10); // Número ajustado de folhas para cada tronco
+  for (var i = 0; i < nLeaves; i++) {
+    var leaf = new Leaf();
+    var scale = 0.5 + Math.random() * 0.5;
+    leaf.mesh.scale.set(scale, scale, scale);
+    leaf.mesh.position.y = -this.trunk.height / 2 + i * (this.trunk.height / nLeaves);
+    leaf.mesh.position.x = Math.random() * 5 - 2.5;
+    leaf.mesh.position.z = Math.random() * 5 - 2.5;
+    leaf.mesh.rotation.x = Math.random() * Math.PI;
+    leaf.mesh.rotation.z = Math.random() * Math.PI;
+    this.mesh.add(leaf.mesh);
+  }
 }
 
+Trunk = function () {
+  this.height = 100 + Math.random() * 150; // Altura do tronco
+  var radius = 3;
+  var matTrunk = greenMat;
+  var geom = new THREE.CylinderGeometry(radius, radius, this.height, 6, 1); // Geometria simplificada do tronco
+  geom.applyMatrix(new THREE.Matrix4().makeTranslation(0, this.height / 2, 0));
 
-Trunc = function () {
-  var truncHeight = 100 + Math.random() * 180;
-  var topRadius = 1 + Math.random() * 6;
-  var matTrunc = greenMat;//mats[Math.floor(Math.random()*mats.length)];
-  var nhSegments = 3;//Math.ceil(2 + Math.random()*6);
-  var nvSegments = 3;//Math.ceil(2 + Math.random()*6);
-  var geom = new THREE.CylinderGeometry(topRadius, topRadius, truncHeight, nhSegments, nvSegments);
-  geom.applyMatrix(new THREE.Matrix4().makeTranslation(0, truncHeight / 2, 0));
-
-  this.mesh = new THREE.Mesh(geom, matTrunc);
-
-  for (var i = 0; i < geom.vertices.length; i++) {
-    var noise = Math.random();
-    var v = geom.vertices[i];
-    v.x += -noise + Math.random() * noise * 2;
-    v.y += -noise + Math.random() * noise * 2;
-    v.z += -noise + Math.random() * noise * 2;
-
-    geom.computeVertexNormals();
-  }
-
+  this.mesh = new THREE.Mesh(geom, matTrunk);
   this.mesh.castShadow = true;
+  this.mesh.receiveShadow = true;
+}
+
+Leaf = function () {
+  var geom = new THREE.BoxGeometry(2, 10, 2, 1, 5, 1); // Geometria das folhas
+  geom.vertices.forEach(vertex => {
+    vertex.y += Math.random() * 5 - 2.5; // Adiciona variação para criar uma forma mais orgânica
+  });
+
+  var matLeaf = new THREE.MeshPhongMaterial({
+    color: 0x228B22,
+    shininess: 10,
+    flatShading: true
+  });
+
+  this.mesh = new THREE.Mesh(geom, matLeaf);
+  this.mesh.castShadow = true;
+  this.mesh.receiveShadow = true;
 }
 
 function createLightningBolt() {
@@ -650,7 +690,7 @@ function updateFloorRotation() {
 }
 
 function createObstacle() {
-  obstacle = new Hedgehog();
+  obstacle = new Coral();
   obstacle.body.rotation.y = -Math.PI / 2;
   obstacle.mesh.scale.set(1.1, 1.1, 1.1);
   obstacle.mesh.position.y = floorRadius + 4;
@@ -666,8 +706,8 @@ function createBonusParticles() {
 }
 
 function checkCollision() {
-  var db = hero.mesh.position.clone().sub(lightningBolt.mesh.position.clone());
-  var dm = hero.mesh.position.clone().sub(obstacle.mesh.position.clone());
+  var db = submarine.mesh.position.clone().sub(lightningBolt.mesh.position.clone());
+  var dm = submarine.mesh.position.clone().sub(obstacle.mesh.position.clone());
 
   if (db.length() < collisionBonus) {
     getBonus();
@@ -730,10 +770,13 @@ function loop() {
   delta = clock.getDelta();
   updateFloorRotation();
 
-  if (gameStatus == "play") {
+  if (gameStatus == "gameOver") {
+    resetGame();
+  }
 
-    if (hero.status == "running") {
-      hero.run();
+  if (gameStatus == "play") {
+    if (submarine.status == "running") {
+      submarine.run();
     }
     updateDistance();
     updateLanternFishPosition();
@@ -753,11 +796,17 @@ function render() {
 window.addEventListener('load', init, false);
 
 function init(event) {
+
+  var record = localStorage.getItem('record');
+  if (record) {
+    fieldRecord.innerHTML = 'Record: ' + record;
+  }
+
   SaveRecord();
   initScreenAnd3D();
   createLights();
   createFloor()
-  createHero();
+  createSubmarine();
   createLanternFish();
   createFirs();
   createLightningBolt();
@@ -767,15 +816,13 @@ function init(event) {
   resetGame();
   loop();
 
-  //setInterval(hero.blink.bind(hero), 3000);
+  //setInterval(submarine.blink.bind(submarine), 3000);
 }
 
 function resetGame() {
-  scene.add(hero.mesh);
-  hero.mesh.rotation.y = Math.PI / 2;
-  hero.mesh.position.y = 0;
-  hero.mesh.position.z = 0;
-  hero.mesh.position.x = 0;
+  scene.add(submarine.mesh);
+  submarine.mesh.rotation.y = Math.PI / 2;
+  submarine.mesh.position.set(0, 0, 0);
 
   lanternFishPos = .56;
   lanternFishPosTarget = .65;
@@ -785,8 +832,8 @@ function resetGame() {
   lightningBolt.mesh.visible = true;
   obstacle.mesh.visible = true;
   gameStatus = "play";
-  hero.status = "running";
-  hero.nod();
+  submarine.status = "running";
+  submarine.nod();
   //audio.play();
   updateLevel();
   levelInterval = setInterval(updateLevel, levelUpdateFreq);
@@ -799,10 +846,17 @@ function initUI() {
 }
 
 function SaveRecord() {
-  var record = document.getElementById("distValue").innerHTML;
-  localStorage.setItem('record', record);
-  var preciousRecord = Number(localStorage.getItem('record'));
-  if (distValue > preciousRecord) {
-    localStorage.setItem('record', distValue);
+  var currentScore = parseInt(document.getElementById("distValue").innerText, 10);
+  var previousRecord = parseInt(localStorage.getItem('record') || '0', 10);
+
+  if (currentScore > previousRecord) {
+    localStorage.setItem('record', currentScore.toString());
+    document.getElementById("record").innerText = "Record: " + currentScore;
+  } else {
+    document.getElementById("record").innerText = "Record: " + previousRecord;
   }
 }
+
+window.onload = function () {
+  SaveRecord();
+};
