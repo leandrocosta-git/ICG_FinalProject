@@ -83,6 +83,24 @@
   user-select: none;
 }
 
+#lights {
+  position: absolute;
+  width: 100%;
+  bottom: 0;
+  margin: auto;
+  margin-bottom: 30px;
+  font-family: "Kanit", sans-serif;
+  color: white;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-align: center;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
 .lightInstructions {
   color: white;
 }

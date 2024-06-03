@@ -25,6 +25,7 @@ var cameraPosGameOver = 260;
 var lanternFishAcceleration = 0.004;
 var malusClearColor = 0x0e1521;
 var malusClearAlpha = 1;
+var zPerspective = false;
 
 var fieldRecord = document.getElementById('record');
 
@@ -141,6 +142,24 @@ function initScreenAnd3D() {
       } else if (gameStatus === "play") {
         submarine.jump();
       }
+    } else if (event.key === 'c') {
+      // Toggle zPerspective when 'c' is pressed
+      zPerspective = !zPerspective;
+
+      // Update camera settings based on zPerspective
+      if (zPerspective) {
+        fieldOfView = 50;
+        camera.position.x = 0;
+        camera.position.z = cameraPosGame;
+        camera.position.y = 30;
+        camera.lookAt(new THREE.Vector3(0, 30, 0));
+      } else {
+        fieldOfView = 80;
+        camera.position.set(-60, 70, 0);
+        camera.lookAt(new THREE.Vector3(0, 35, 0));
+      }
+
+      camera.updateProjectionMatrix(); // Update the camera with the new settings
     }
   });
   document.addEventListener("touchend", handleMouseDown, false);
@@ -166,9 +185,9 @@ function handleMouseDown(event) {
 }
 
 function createLights() {
-  globalLight = new THREE.AmbientLight(0x222222, 0.05);
+  globalLight = new THREE.AmbientLight(0x222222, 0.02);
 
-  shadowLight = new THREE.DirectionalLight(0xffffff, 1);
+  shadowLight = new THREE.DirectionalLight(0xffffff, 0.5);
   shadowLight.position.set(-30, 40, 20);
   shadowLight.castShadow = true;
   shadowLight.shadow.camera.left = -400;
@@ -217,19 +236,19 @@ Submarine = function () {
   // Creating the main body of the submarine
   var bodyGeom = new THREE.CylinderGeometry(3, 3, 9, 16, 1);
   var bodyMat = new THREE.MeshPhongMaterial({ color: whiteMat, shading: THREE.FlatShading });
-  var body = new THREE.Mesh(bodyGeom, bodyMat);
+  this.body = new THREE.Mesh(bodyGeom, bodyMat);
 
   var bodyFront = new THREE.CylinderGeometry(3, 2, 2, 16, 1);
   bodyFront = new THREE.Mesh(bodyFront, bodyMat);
   bodyFront.position.set(0, 5.5, 0);
   bodyFront.rotation.x = Math.PI;
 
-  body.add(bodyFront);
-  body.position.set(0, 10, 0);
+  this.body.add(bodyFront);
+  this.body.position.set(0, 10, 0);
 
-  body.rotation.z = Math.PI / 2;
-  body.rotation.y = Math.PI / 2;
-  this.mesh.add(body);
+  this.body.rotation.z = Math.PI / 2;
+  this.body.rotation.y = Math.PI / 2;
+  this.mesh.add(this.body);
 
   // Create the Propeller group
   var propeller = new THREE.Group();
@@ -254,7 +273,7 @@ Submarine = function () {
   propeller.rotation.z = Math.PI / 2;
   propeller.position.set(0, -8, 0);
 
-  body.add(propeller);
+  this.body.add(propeller);
 
   // Create Conning tower
   var towerGeom = new THREE.CylinderGeometry(2, 2, 2, 6, 1);
@@ -286,18 +305,15 @@ Submarine.prototype.run = function () {
   this.status = "running";
 
   var s = Math.min(speed, maxSpeed);
-
   this.runningCycle += delta * s * .7;
   this.runningCycle = this.runningCycle % (Math.PI * 2);
   var t = this.runningCycle;
 
-  var amp = 4;
+  var amp = 0.2;
   var disp = .2;
 
-  // BODY
-  if (this.body) {
-    this.body.position.y = 6 + Math.sin(t - Math.PI / 2) * amp;
-  }
+  // Body animation
+  this.body.position.y = 10;
 }
 
 Submarine.prototype.jump = function () {
@@ -395,9 +411,29 @@ LanternFish = function () {
   this.body.add(this.lantern);
 
   //light to the lantern
-  var light = new THREE.PointLight(0x00FFFF, 100, 250, 6);
+  var light = new THREE.PointLight(0x00FFFF, 80, 250, 5);
   light.position.set(0, 0, 0);
   this.lantern.add(light);
+
+  window.addEventListener('keydown', function (event) {
+    switch (event.key) {
+      case '1':
+        light.intensity = 90;
+        light.distance = 150;
+        light.decay = 6;
+        break;
+      case '2':
+        light.intensity = 80;
+        light.distance = 250;
+        light.decay = 5;
+        break;
+      case '3':
+        light.intensity = 30;
+        light.distance = 400;
+        light.decay = 3;
+        break;
+    }
+  });
 
   //lantern holder
   var lanternHolderGeom = new THREE.CylinderGeometry(2, 2, 10, 6, 1);
