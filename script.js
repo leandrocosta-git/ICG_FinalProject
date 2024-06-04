@@ -26,6 +26,7 @@ var lanternFishAcceleration = 0.004;
 var malusClearColor = 0x0e1521;
 var malusClearAlpha = 1;
 var zPerspective = false;
+var audio = new Audio('audio/phantomm.mp3')
 
 var fieldGameOver, fieldDistance;
 
@@ -40,7 +41,6 @@ var HEIGHT, WIDTH, windowHalfX, windowHalfY,
 //3D OBJECTS VARIABLES
 
 var submarine;
-
 
 // Materials
 var blackMat = new THREE.MeshPhongMaterial({
@@ -135,8 +135,9 @@ function initScreenAnd3D() {
   window.addEventListener('resize', handleWindowResize, false);
   document.addEventListener('keydown', function (event) {
     if (event.code === 'Space') {
+      audio.play();
       if (gameStatus === "gameOver") {
-        replay();
+        //replay();
       } else if (gameStatus === "play") {
         submarine.jump();
       }
@@ -871,7 +872,8 @@ function loop() {
     updateObstaclePosition();
     checkCollision();
   }
-
+  audio.loop = true;
+  audio.play();
   render();
   requestAnimationFrame(loop);
 }
@@ -896,7 +898,7 @@ function init(event) {
   resetGame();
   loop();
 
-  //setInterval(submarine.blink.bind(submarine), 3000);
+  audio.play();
 }
 
 function resetGame() {
