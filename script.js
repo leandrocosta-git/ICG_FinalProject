@@ -27,8 +27,6 @@ var malusClearColor = 0x0e1521;
 var malusClearAlpha = 1;
 var zPerspective = false;
 
-var fieldRecord = document.getElementById('record');
-
 var fieldGameOver, fieldDistance;
 
 //SCREEN & MOUSE VARIABLES
@@ -239,11 +237,11 @@ Submarine = function () {
   this.body = new THREE.Mesh(bodyGeom, bodyMat);
 
   var bodyFront = new THREE.CylinderGeometry(3, 2, 2, 16, 1);
-  bodyFront = new THREE.Mesh(bodyFront, bodyMat);
-  bodyFront.position.set(0, 5.5, 0);
-  bodyFront.rotation.x = Math.PI;
+  this.bodyFront = new THREE.Mesh(bodyFront, bodyMat);
+  this.bodyFront.position.set(0, 5.5, 0);
+  this.bodyFront.rotation.x = Math.PI;
 
-  this.body.add(bodyFront);
+  this.body.add(this.bodyFront);
   this.body.position.set(0, 10, 0);
 
   this.body.rotation.z = Math.PI / 2;
@@ -253,10 +251,10 @@ Submarine = function () {
   // Create the Propeller group
   var propeller = new THREE.Group();
   // Create the blades
-  var bladeGeom = new THREE.BoxGeometry(1, 2, 4, 1);
+  var bladeGeom = new THREE.BoxGeometry(0.5, 1, 4, 1);
   var bladeMat = new THREE.MeshPhongMaterial({ color: 0x23190f, shading: THREE.FlatShading });
   var blade1 = new THREE.Mesh(bladeGeom, bladeMat);
-  blade1.position.set(2, 0, 0);
+  blade1.position.set(2.5, 0, 0);
 
   var blade2 = blade1.clone();
   blade2.rotation.x = Math.PI / 2;
@@ -309,11 +307,8 @@ Submarine.prototype.run = function () {
   this.runningCycle = this.runningCycle % (Math.PI * 2);
   var t = this.runningCycle;
 
-  var amp = 0.2;
+  var amp = 2;
   var disp = .2;
-
-  // Body animation
-  this.body.position.y = 10;
 }
 
 Submarine.prototype.jump = function () {
@@ -379,7 +374,7 @@ LanternFish = function () {
   this.body = new THREE.Mesh(bodyGeom, blackMat);
 
   //head
-  var headGeom = new THREE.CylinderGeometry(16, 2, 20, 6, 1);
+  var headGeom = new THREE.CylinderGeometry(16, 1, 20, 6, 1);
   headGeom.rotateX(Math.PI / 2);
   this.head = new THREE.Mesh(headGeom, blackMat);
   this.head.rotateX(Math.PI);
@@ -404,8 +399,9 @@ LanternFish = function () {
     emissive: 0x00FFFF,
     shading: THREE.FlatShading,
   });
-  var lanternGeom = new THREE.SphereGeometry(2);
+  var lanternGeom = new THREE.CylinderGeometry(2, 2, 2, 6, 1);
   this.lantern = new THREE.Mesh(lanternGeom, lanternMaterial);
+  this.lantern.rotateX(Math.PI / 2);
   this.lantern.position.z = 24;
   this.lantern.position.y = 22;
   this.body.add(this.lantern);
@@ -479,6 +475,13 @@ LanternFish.prototype.run = function () {
   this.runningCycle += delta * s * .7;
   this.runningCycle = this.runningCycle % (Math.PI * 2);
   var t = this.runningCycle;
+
+  var amp = 2;
+  var disp = .2;
+
+  // BODY
+  this.body.position.y = 20 + Math.sin(t - Math.PI / 2) * amp;
+  this.body.rotation.z = Math.sin(t - Math.PI / 2) * amp * .05;
 }
 
 LanternFish.prototype.nod = function () {
@@ -629,7 +632,6 @@ function startGame() {
   lightningBolt.mesh.visible = false;
   obstacle.mesh.visible = false;
   clearInterval(levelInterval);
-  SaveRecord();
 }
 
 function gameOver() {
@@ -643,7 +645,6 @@ function gameOver() {
   lightningBolt.mesh.visible = false;
   obstacle.mesh.visible = false;
   clearInterval(levelInterval);
-  SaveRecord();
 }
 
 function replay() {
@@ -882,13 +883,6 @@ function render() {
 window.addEventListener('load', init, false);
 
 function init(event) {
-
-  var record = localStorage.getItem('record');
-  if (record) {
-    fieldRecord.innerHTML = 'Record: ' + record;
-  }
-
-  SaveRecord();
   initScreenAnd3D();
   createLights();
   createFloor()
@@ -930,19 +924,3 @@ function initUI() {
   fieldGameOver = document.getElementById("centerText");
   fieldStartGame = document.getElementById("startGame");
 }
-
-function SaveRecord() {
-  var currentScore = parseInt(document.getElementById("distValue").innerText, 10);
-  var previousRecord = parseInt(localStorage.getItem('record') || '0', 10);
-
-  if (currentScore > previousRecord) {
-    localStorage.setItem('record', currentScore.toString());
-    document.getElementById("record").innerText = "Record: " + currentScore;
-  } else {
-    document.getElementById("record").innerText = "Record: " + previousRecord;
-  }
-}
-
-window.onload = function () {
-  SaveRecord();
-};
